@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smoosh — Compress images and video, instantly</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --ink: #0a0a0a;
+    --paper: #f6f4f0;
+    --stone: #8a8580;
+    --accent: #d14b28;
+    --accent-soft: #d14b2815;
+    --rule: #d6d2cc;
+    --card: #edeae5;
+  }
+
+  html { font-size: 16px; scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* --- Grain overlay --- */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px 256px;
+    z-index: 9999;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* --- Navigation --- */
+  nav {
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  nav .container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    text-decoration: none;
+    color: var(--ink);
+  }
+
+  .nav-brand svg { flex-shrink: 0; }
+
+  .nav-brand span {
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .nav-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--stone);
+    letter-spacing: 0.02em;
+  }
+
+  /* --- Hero --- */
+  .hero {
+    padding: 5rem 0 4rem;
+    text-align: center;
+  }
+
+  .hero-icon {
+    margin: 0 auto 2.5rem;
+    width: 96px;
+    height: 96px;
+    animation: settle 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes settle {
+    0% { transform: scale(0.8) translateY(-8px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  h1 {
+    font-family: 'Instrument Serif', serif;
+    font-weight: 400;
+    font-size: clamp(2.75rem, 6vw, 4rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.25rem;
+    animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .hero-sub {
+    font-size: 1.125rem;
+    color: var(--stone);
+    max-width: 480px;
+    margin: 0 auto 2.5rem;
+    animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+  }
+
+  @keyframes rise {
+    0% { transform: translateY(16px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: var(--stone);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.125rem;
+  }
+
+  /* --- Download --- */
+  .download-section {
+    text-align: center;
+    padding: 0 0 4rem;
+    animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+  }
+
+  .download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 2rem;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+  }
+
+  .download-btn:hover {
+    background: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(209, 75, 40, 0.2);
+  }
+
+  .download-btn svg { flex-shrink: 0; }
+
+  .download-note {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--stone);
+    margin-top: 0.75rem;
+    letter-spacing: 0.01em;
+  }
+
+  /* --- Divider --- */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--rule);
+    margin: 0;
+  }
+
+  /* --- Features --- */
+  .features {
+    padding: 4rem 0;
+  }
+
+  .features-header {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--stone);
+    margin-bottom: 2.5rem;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .feature-card {
+    background: var(--paper);
+    padding: 2rem 1.5rem;
+    transition: background 0.25s ease;
+  }
+
+  .feature-card:hover {
+    background: var(--card);
+  }
+
+  .feature-icon {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 1rem;
+    color: var(--accent);
+  }
+
+  .feature-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .feature-desc {
+    font-size: 0.875rem;
+    color: var(--stone);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+  }
+
+  .feature-default {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6875rem;
+    color: var(--accent);
+    background: var(--accent-soft);
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    border-radius: 3px;
+    letter-spacing: 0.02em;
+  }
+
+  /* --- How it works --- */
+  .how {
+    padding: 4rem 0;
+  }
+
+  .how-header {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--stone);
+    margin-bottom: 2.5rem;
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    counter-reset: step;
+  }
+
+  .step {
+    counter-increment: step;
+    position: relative;
+    padding-left: 0;
+  }
+
+  .step::before {
+    content: counter(step, decimal-leading-zero);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6875rem;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+
+  .step-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.125rem;
+    margin-bottom: 0.375rem;
+  }
+
+  .step-desc {
+    font-size: 0.8125rem;
+    color: var(--stone);
+    line-height: 1.5;
+  }
+
+  /* --- Defaults table --- */
+  .defaults {
+    padding: 4rem 0;
+  }
+
+  .defaults-header {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--stone);
+    margin-bottom: 2.5rem;
+  }
+
+  .defaults-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  .defaults-table thead th {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--stone);
+    font-weight: 400;
+    text-align: left;
+    padding: 0 0 0.75rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .defaults-table tbody td {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+
+  .defaults-table tbody td:first-child {
+    font-weight: 500;
+    width: 30%;
+  }
+
+  .defaults-table tbody td:nth-child(2) {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8125rem;
+    color: var(--accent);
+  }
+
+  .defaults-table tbody td:nth-child(3) {
+    color: var(--stone);
+    font-size: 0.8125rem;
+  }
+
+  /* --- Trust --- */
+  .trust {
+    padding: 4rem 0;
+    text-align: center;
+  }
+
+  .trust-badges {
+    display: flex;
+    justify-content: center;
+    gap: 2.5rem;
+    flex-wrap: wrap;
+  }
+
+  .trust-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--stone);
+    letter-spacing: 0.02em;
+  }
+
+  .trust-badge svg {
+    width: 16px;
+    height: 16px;
+    color: var(--stone);
+  }
+
+  /* --- Footer --- */
+  footer {
+    padding: 2rem 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  footer .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6875rem;
+    color: var(--stone);
+    letter-spacing: 0.02em;
+  }
+
+  footer a {
+    color: var(--stone);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  footer a:hover { color: var(--ink); }
+
+  /* --- Responsive --- */
+  @media (max-width: 680px) {
+    .feature-grid { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr; gap: 1.5rem; }
+    .hero-stats { gap: 2rem; }
+    .defaults-table { font-size: 0.8125rem; }
+    .trust-badges { gap: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav>
+  <div class="container">
+    <a href="#" class="nav-brand">
+      <svg width="24" height="24" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="4" width="40" height="40" rx="10" fill="#0a0a0a"/>
+        <path d="M16 18L24 24L16 30" stroke="#f6f4f0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M32 18L24 24L32 30" stroke="#d14b28" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Smoosh</span>
+    </a>
+    <span class="nav-meta">v1.0 for macOS</span>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-icon">
+      <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="4" width="88" height="88" rx="20" fill="#0a0a0a"/>
+        <path d="M30 34L48 48L30 62" stroke="#f6f4f0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M66 34L48 48L66 62" stroke="#d14b28" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h1>Drop it. <em>Smoosh it.</em></h1>
+    <p class="hero-sub">
+      A tiny macOS app that compresses images to WebP and optimizes video to MP4 or WebM. Drag, drop, done.
+    </p>
+    <div class="hero-stats">
+      <div class="stat">
+        <div class="stat-value">1.9 MB</div>
+        <div class="stat-label">App size</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">0</div>
+        <div class="stat-label">Dependencies</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">&lt; 8 MB</div>
+        <div class="stat-label">RAM usage</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Download -->
+<section class="download-section">
+  <div class="container">
+    <a href="#" class="download-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Download for macOS
+    </a>
+    <p class="download-note">macOS 13+ / Apple Silicon / Signed &amp; Notarized</p>
+  </div>
+</section>
+
+<hr class="divider container">
+
+<!-- Features -->
+<section class="features">
+  <div class="container">
+    <div class="features-header">What it does</div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <svg class="feature-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="24" height="24" rx="3"/>
+          <circle cx="11" cy="13" r="2"/>
+          <path d="M28 21l-6-6-14 13"/>
+        </svg>
+        <div class="feature-title">Image to WebP</div>
+        <p class="feature-desc">
+          Drop PNG, JPEG, TIFF, BMP, GIF, or HEIC files. Get optimized WebP output with visually lossless compression.
+        </p>
+        <span class="feature-default">Default: 80% quality</span>
+      </div>
+      <div class="feature-card">
+        <svg class="feature-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="6,4 26,16 6,28"/>
+        </svg>
+        <div class="feature-title">Video to MP4</div>
+        <p class="feature-desc">
+          Downspec oversized video to sane dimensions with H.264 encoding. Ideal for web, ads, and IFE content.
+        </p>
+        <span class="feature-default">Default: 1920px / 30fps / 2.0 Mbps</span>
+      </div>
+      <div class="feature-card">
+        <svg class="feature-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="6" width="26" height="20" rx="3"/>
+          <path d="M3 12h26"/>
+          <path d="M10 12v14"/>
+        </svg>
+        <div class="feature-title">Video to WebM</div>
+        <p class="feature-desc">
+          VP9 encoding with a built-in WebM muxer. Open format, excellent compression, no ffmpeg required.
+        </p>
+        <span class="feature-default">Default: 1920px / 30fps / 2.0 Mbps</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider container">
+
+<!-- How it works -->
+<section class="how">
+  <div class="container">
+    <div class="how-header">How it works</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-title">Drop your files</div>
+        <p class="step-desc">Drag images or videos onto the app window or the Dock icon. Handles single files or batches.</p>
+      </div>
+      <div class="step">
+        <div class="step-title">Sensible defaults apply</div>
+        <p class="step-desc">Files convert immediately with production-tested settings. Adjust quality, resolution, or bitrate if needed.</p>
+      </div>
+      <div class="step">
+        <div class="step-title">Compressed files appear</div>
+        <p class="step-desc">Output saves next to the original (or a folder you choose). See file size reduction at a glance.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider container">
+
+<!-- Defaults -->
+<section class="defaults">
+  <div class="container">
+    <div class="defaults-header">Sensible defaults</div>
+    <table class="defaults-table">
+      <thead>
+        <tr>
+          <th>Setting</th>
+          <th>Default</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>WebP quality</td>
+          <td>80%</td>
+          <td>Visually lossless for most images. Adjustable 1-100.</td>
+        </tr>
+        <tr>
+          <td>Max width</td>
+          <td>1920px</td>
+          <td>Scales down proportionally. Keeps aspect ratio.</td>
+        </tr>
+        <tr>
+          <td>Frame rate</td>
+          <td>30 fps</td>
+          <td>Standard for web and display content.</td>
+        </tr>
+        <tr>
+          <td>Bitrate</td>
+          <td>2.0 Mbps</td>
+          <td>Good quality at a fraction of the file size.</td>
+        </tr>
+        <tr>
+          <td>Output format</td>
+          <td>MP4 (H.264)</td>
+          <td>Switchable to WebM (VP9) in settings.</td>
+        </tr>
+        <tr>
+          <td>Output location</td>
+          <td>Same as source</td>
+          <td>Or choose a custom folder.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="divider container">
+
+<!-- Trust -->
+<section class="trust">
+  <div class="container">
+    <div class="trust-badges">
+      <div class="trust-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        Apple notarized
+      </div>
+      <div class="trust-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        Developer ID signed
+      </div>
+      <div class="trust-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+        </svg>
+        No dependencies
+      </div>
+      <div class="trust-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 18 22 12 16 6"/>
+          <polyline points="8 6 2 12 8 18"/>
+        </svg>
+        Native Swift + C
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <span>Built by <a href="https://mysticcoders.com">Mystic Coders, LLC</a></span>
+    <span>macOS 13+</span>
+  </div>
+</footer>
+
+</body>
+</html>
