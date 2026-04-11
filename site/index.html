@@ -199,6 +199,23 @@
     letter-spacing: 0.01em;
   }
 
+  .appstore-badge {
+    margin-top: 1.25rem;
+  }
+
+  .coming-soon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--stone);
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    letter-spacing: 0.02em;
+  }
+
   /* --- Divider --- */
   .divider {
     border: none;
@@ -443,11 +460,7 @@
 <nav>
   <div class="container">
     <a href="#" class="nav-brand">
-      <svg width="24" height="24" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="4" y="4" width="40" height="40" rx="10" fill="#0a0a0a"/>
-        <path d="M16 18L24 24L16 30" stroke="#f6f4f0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M32 18L24 24L32 30" stroke="#d14b28" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
+      <img src="app-icon.png" alt="Smoosh" width="24" height="24" style="border-radius: 5px;">
       <span>Smoosh</span>
     </a>
     <span class="nav-meta">v1.0 for macOS</span>
@@ -458,11 +471,7 @@
 <section class="hero">
   <div class="container">
     <div class="hero-icon">
-      <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="4" y="4" width="88" height="88" rx="20" fill="#0a0a0a"/>
-        <path d="M30 34L48 48L30 62" stroke="#f6f4f0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M66 34L48 48L66 62" stroke="#d14b28" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
+      <img src="app-icon.png" alt="Smoosh app icon" width="96" height="96" style="border-radius: 20px;">
     </div>
     <h1>Drop it. <em>Smoosh it.</em></h1>
     <p class="hero-sub">
@@ -488,7 +497,7 @@
 <!-- Download -->
 <section class="download-section">
   <div class="container">
-    <a href="https://github.com/mysticcoders/smoosh/releases/latest/download/Smoosh.zip" class="download-btn">
+    <a href="https://github.com/mysticcoders/smoosh/releases/latest/download/Smoosh.dmg" class="download-btn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
         <polyline points="7 10 12 15 17 10"/>
@@ -497,6 +506,9 @@
       Download for macOS
     </a>
     <p class="download-note">macOS 13+ / Apple Silicon / Signed &amp; Notarized</p>
+    <div class="appstore-badge">
+      <span class="coming-soon">Coming soon to the Mac App Store</span>
+    </div>
   </div>
 </section>
 

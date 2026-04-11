@@ -56,8 +56,9 @@ swiftc \
     -o "${MACOS}/${APP_NAME}" \
     Smoosh.swift
 
-# Copy Info.plist
+# Copy Info.plist and app icon
 cp Info.plist "${CONTENTS}/Info.plist"
+cp AppIcon.icns "${RESOURCES}/AppIcon.icns"
 
 # Hardened runtime + Developer ID signing
 SIGN_IDENTITY="Developer ID Application: Mystic Coders, LLC (REMBT6JY4N)"
@@ -66,7 +67,7 @@ TEAM_ID="REMBT6JY4N"
 echo "Signing with: ${SIGN_IDENTITY}"
 codesign --force --options runtime --sign "${SIGN_IDENTITY}" "${APP_BUNDLE}"
 
-# Create zip for notarization
+# Create zip for notarization submission
 cd "${BUILD_DIR}"
 zip -r "${APP_NAME}.zip" "${APP_NAME}.app"
 
@@ -80,14 +81,78 @@ xcrun notarytool submit "${APP_NAME}.zip" \
 # Staple the notarization ticket to the app
 echo "Stapling notarization ticket..."
 xcrun stapler staple "${APP_NAME}.app"
-
-# Re-zip with stapled ticket
 rm "${APP_NAME}.zip"
-zip -r "${APP_NAME}.zip" "${APP_NAME}.app"
 cd ..
+
+# Create DMG
+DMG_NAME="${APP_NAME}"
+DMG_PATH="${BUILD_DIR}/${DMG_NAME}.dmg"
+DMG_TEMP="${BUILD_DIR}/dmg-staging"
+
+echo "Creating DMG..."
+rm -rf "${DMG_TEMP}" "${DMG_PATH}"
+mkdir -p "${DMG_TEMP}"
+cp -R "${APP_BUNDLE}" "${DMG_TEMP}/"
+ln -s /Applications "${DMG_TEMP}/Applications"
+
+# Create a read-write DMG first for customization
+DMG_RW="${BUILD_DIR}/${DMG_NAME}-rw.dmg"
+hdiutil create -volname "${APP_NAME}" \
+    -srcfolder "${DMG_TEMP}" \
+    -ov -format UDRW \
+    -fs HFS+ \
+    "${DMG_RW}"
+
+# Mount the read-write DMG
+MOUNT_DIR=$(hdiutil attach "${DMG_RW}" -readwrite -noverify | grep "Volumes" | awk '{print $3}')
+echo "Mounted DMG at: ${MOUNT_DIR}"
+
+# Copy background image
+mkdir -p "${MOUNT_DIR}/.background"
+cp dmg-background.png "${MOUNT_DIR}/.background/background.png"
+
+# Configure Finder window layout via AppleScript
+osascript <<APPLESCRIPT
+tell application "Finder"
+    tell disk "${APP_NAME}"
+        open
+        set current view of container window to icon view
+        set toolbar visible of container window to false
+        set statusbar visible of container window to false
+        set bounds of container window to {100, 100, 760, 500}
+        set viewOptions to the icon view options of container window
+        set arrangement of viewOptions to not arranged
+        set icon size of viewOptions to 96
+        set background picture of viewOptions to file ".background:background.png"
+        set position of item "${APP_NAME}.app" of container window to {165, 200}
+        set position of item "Applications" of container window to {495, 200}
+        close
+        open
+        update without registering applications
+        delay 2
+        close
+    end tell
+end tell
+APPLESCRIPT
+
+# Unmount, convert to compressed read-only
+hdiutil detach "${MOUNT_DIR}" -quiet
+hdiutil convert "${DMG_RW}" -format UDZO -imagekey zlib-level=9 -o "${DMG_PATH}"
+rm -f "${DMG_RW}"
+rm -rf "${DMG_TEMP}"
+
+# Notarize the DMG
+echo "Notarizing DMG..."
+xcrun notarytool submit "${DMG_PATH}" \
+    --keychain-profile "notarytool-profile" \
+    --team-id "${TEAM_ID}" \
+    --wait
+
+xcrun stapler staple "${DMG_PATH}"
 
 echo ""
 echo "Done! Signed, notarized, and stapled."
 echo "App bundle: ${APP_BUNDLE}"
-echo "Shareable zip:    ${BUILD_DIR}/${APP_NAME}.zip"
-echo "Size: $(du -sh "${APP_BUNDLE}" | cut -f1)"
+echo "DMG installer: ${DMG_PATH}"
+echo "App size: $(du -sh "${APP_BUNDLE}" | cut -f1)"
+echo "DMG size: $(du -sh "${DMG_PATH}" | cut -f1)"

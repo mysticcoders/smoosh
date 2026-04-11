@@ -40,5 +40,7 @@
     </array>
     <key>NSAppleEventsUsageDescription</key>
     <string>Smoosh needs access to convert your images.</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.graphics-design</string>
 </dict>
 </plist>
