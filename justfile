@@ -12,13 +12,30 @@ build:
 build-appstore:
     ./build-appstore.sh
 
+# Bump CFBundleVersion in Info.plist (build number — required per App Store Connect upload)
+bump-build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    CURRENT=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" Info.plist)
+    if ! [[ "${CURRENT}" =~ ^[0-9]+$ ]]; then
+        echo "CFBundleVersion is '${CURRENT}' — expected an integer. Edit Info.plist manually."
+        exit 1
+    fi
+    NEW=$((CURRENT + 1))
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${NEW}" Info.plist
+    echo "Build number: ${CURRENT} → ${NEW}"
+
+# Regenerate Smoosh.xcodeproj from project.yml
+xcodegen:
+    xcodegen generate
+
 # Fast local build — unsigned, no notarization, for iterative development
 dev:
     #!/usr/bin/env bash
     set -euo pipefail
     HOMEBREW_PREFIX="$(brew --prefix)"
     SDK_PATH="$(xcrun --show-sdk-path)"
-    VPX_LIB="${HOMEBREW_PREFIX}/Cellar/libvpx/1.15.2/lib"
+    VPX_LIB="${HOMEBREW_PREFIX}/opt/libvpx/lib"
     mkdir -p build-dev/Smoosh.app/Contents/{MacOS,Resources}
     cc -O2 -c -target arm64-apple-macosx13.0 -isysroot "${SDK_PATH}" \
         -I "${HOMEBREW_PREFIX}/include" -o build-dev/webm_muxer.o webm_muxer.c

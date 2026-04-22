@@ -1,0 +1,71 @@
+name: Smoosh
+options:
+  createIntermediateGroups: true
+  deploymentTarget:
+    macOS: "13.0"
+  defaultConfig: Release
+
+configs:
+  Debug: debug
+  Release: release
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+    ARCHS: arm64
+    ONLY_ACTIVE_ARCH: YES
+    DEVELOPMENT_TEAM: REMBT6JY4N
+
+targets:
+  Smoosh:
+    type: application
+    platform: macOS
+    sources:
+      - path: Smoosh.swift
+      - path: webm_muxer.c
+      - path: webm_muxer.h
+      - path: webp-bridge.h
+      - path: AppIcon.icns
+      - path: Info.plist
+        buildPhase: none
+      - path: Smoosh.entitlements
+        buildPhase: none
+    settings:
+      base:
+        ARCHS: arm64
+        "EXCLUDED_ARCHS[sdk=macosx*]": x86_64
+        PRODUCT_BUNDLE_IDENTIFIER: com.mysticcoders.smoosh
+        PRODUCT_NAME: Smoosh
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Info.plist
+        CODE_SIGN_ENTITLEMENTS: Smoosh.entitlements
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_OBJC_BRIDGING_HEADER: webp-bridge.h
+        ENABLE_HARDENED_RUNTIME: YES
+        SWIFT_OPTIMIZATION_LEVEL: "-O"
+        GCC_OPTIMIZATION_LEVEL: "s"
+        SWIFT_WHOLE_MODULE_OPTIMIZATION: YES
+        HEADER_SEARCH_PATHS:
+          - $(inherited)
+          - /opt/homebrew/include
+        LIBRARY_SEARCH_PATHS:
+          - $(inherited)
+          - /opt/homebrew/lib
+          - /opt/homebrew/opt/libvpx/lib
+        OTHER_LDFLAGS:
+          - $(inherited)
+          - /opt/homebrew/lib/libwebp.a
+          - /opt/homebrew/lib/libsharpyuv.a
+          - /opt/homebrew/opt/libvpx/lib/libvpx.a
+      configs:
+        Debug:
+          ARCHS: arm64
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+          GCC_OPTIMIZATION_LEVEL: "0"
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "-"
+          DEVELOPMENT_TEAM: ""
+          PROVISIONING_PROFILE_SPECIFIER: ""
+        Release:
+          ARCHS: arm64

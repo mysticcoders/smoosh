@@ -33,7 +33,7 @@ cc -O2 -c \
 
 # Compile and link Swift + C objects with libwebp and libvpx statically linked
 VPX_INCLUDE="${HOMEBREW_PREFIX}/include"
-VPX_LIB="${HOMEBREW_PREFIX}/Cellar/libvpx/1.15.2/lib"
+VPX_LIB="${HOMEBREW_PREFIX}/opt/libvpx/lib"
 
 swiftc \
     -O \
