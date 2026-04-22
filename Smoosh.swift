@@ -438,19 +438,37 @@ struct VideoOptimizer {
     }
 }
 
+// MARK: - Brand
+
+enum Brand {
+    /// Orange accent color (#d14b28) — matches the marketing site
+    static let accent = Color(red: 209.0 / 255.0, green: 75.0 / 255.0, blue: 40.0 / 255.0)
+    static let accentSoft = accent.opacity(0.12)
+}
+
 // MARK: - Drop Delegate
 
 let imageExtensions = Set(["png", "jpg", "jpeg", "tiff", "tif", "bmp", "gif", "heic", "heif"])
 let videoExtensions = Set(["mp4", "mov", "m4v", "avi"])
 
 struct FileDropDelegate: DropDelegate {
+    @Binding var isTargeted: Bool
     let onDrop: ([URL]) -> Void
 
     func validateDrop(info: DropInfo) -> Bool {
         info.hasItemsConforming(to: [.fileURL])
     }
 
+    func dropEntered(info: DropInfo) {
+        isTargeted = true
+    }
+
+    func dropExited(info: DropInfo) {
+        isTargeted = false
+    }
+
     func performDrop(info: DropInfo) -> Bool {
+        isTargeted = false
         let providers = info.itemProviders(for: [.fileURL])
         var urls: [URL] = []
         let group = DispatchGroup()
@@ -498,6 +516,7 @@ struct ContentView: View {
     @State private var isConverting = false
     @State private var outputDirectory: URL? = nil
     @State private var showSettings = false
+    @ObservedObject private var fileOpener = FileOpenCoordinator.shared
 
     // Image settings
     @State private var webpQuality: Double = 80
@@ -510,9 +529,24 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Text("Smoosh")
-                .font(.system(size: 28, weight: .bold))
-                .foregroundColor(.primary)
+            // Brand header
+            HStack(spacing: 12) {
+                if let icon = NSApp.applicationIconImage {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 44, height: 44)
+                }
+                VStack(alignment: .leading, spacing: -4) {
+                    Text("Drop it.")
+                        .font(.system(size: 22, design: .serif))
+                        .foregroundColor(.primary)
+                    Text("Smoosh it.")
+                        .font(.system(size: 22, design: .serif).italic())
+                        .foregroundColor(Brand.accent)
+                }
+                Spacer()
+            }
 
             // Drop zone
             ZStack {
@@ -520,34 +554,31 @@ struct ContentView: View {
                     .strokeBorder(
                         style: StrokeStyle(lineWidth: 2, dash: [8])
                     )
-                    .foregroundColor(isTargeted ? .accentColor : .secondary.opacity(0.5))
+                    .foregroundColor(isTargeted ? Brand.accent : .secondary.opacity(0.5))
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(isTargeted ? Color.accentColor.opacity(0.1) : Color.clear)
+                            .fill(isTargeted ? Brand.accentSoft : Color.clear)
                     )
 
                 VStack(spacing: 8) {
                     Image(systemName: "arrow.down.doc")
                         .font(.system(size: 36))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(isTargeted ? Brand.accent : .secondary)
                     Text("Drop files here")
                         .font(.headline)
                         .foregroundColor(.secondary)
-                    Text("Images: PNG, JPEG, TIFF, BMP, GIF, HEIC")
-                        .font(.caption)
+                    Text("PNG · JPEG · TIFF · BMP · GIF · HEIC")
+                        .font(.system(.caption, design: .monospaced))
                         .foregroundColor(.secondary.opacity(0.7))
-                    Text("Videos: MP4, MOV, M4V, AVI")
-                        .font(.caption)
+                    Text("MP4 · MOV · M4V · AVI")
+                        .font(.system(.caption, design: .monospaced))
                         .foregroundColor(.secondary.opacity(0.7))
                 }
             }
             .frame(height: 140)
-            .onDrop(of: [.fileURL], delegate: FileDropDelegate { urls in
+            .onDrop(of: [.fileURL], delegate: FileDropDelegate(isTargeted: $isTargeted) { urls in
                 processFiles(urls: urls)
             })
-            .onHover { hovering in
-                isTargeted = hovering
-            }
 
             // Defaults summary + settings toggle
             VStack(spacing: 8) {
@@ -568,6 +599,7 @@ struct ContentView: View {
                     } label: {
                         Image(systemName: "slider.horizontal.3")
                             .font(.body)
+                            .foregroundColor(showSettings ? Brand.accent : .secondary)
                     }
                     .buttonStyle(.borderless)
                     .help("Adjust settings")
@@ -671,7 +703,7 @@ struct ContentView: View {
                         ForEach(results) { result in
                             HStack {
                                 Image(systemName: result.saved ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                    .foregroundColor(result.saved ? .green : .red)
+                                    .foregroundColor(result.saved ? Brand.accent : .red)
                                     .font(.caption)
                                 Text(result.filename)
                                     .font(.caption)
@@ -706,6 +738,18 @@ struct ContentView: View {
         .padding(20)
         .frame(width: 380)
         .fixedSize(horizontal: false, vertical: true)
+        .onChange(of: fileOpener.pendingURLs) { urls in
+            guard !urls.isEmpty else { return }
+            processFiles(urls: urls)
+            fileOpener.pendingURLs = []
+        }
+        .onAppear {
+            let pending = fileOpener.pendingURLs
+            if !pending.isEmpty {
+                processFiles(urls: pending)
+                fileOpener.pendingURLs = []
+            }
+        }
     }
 
     /// Opens a directory picker for output location
@@ -835,14 +879,48 @@ struct ContentView: View {
     }
 }
 
+// MARK: - File Open Coordinator
+
+/// Bridges files opened via the dock icon (or `open` command) to the active ContentView
+final class FileOpenCoordinator: ObservableObject {
+    static let shared = FileOpenCoordinator()
+    @Published var pendingURLs: [URL] = []
+
+    func enqueue(_ urls: [URL]) {
+        pendingURLs = urls
+    }
+}
+
+// MARK: - App Delegate
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Called when the user drops files on the dock icon or invokes `open -a Smoosh ...`
+    func application(_ application: NSApplication, open urls: [URL]) {
+        FileOpenCoordinator.shared.enqueue(urls)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Re-opens (or focuses) the main window when the dock icon is clicked with no visible windows
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        return true
+    }
+}
+
 // MARK: - App
 
 @main
 struct SmooshApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     var body: some Scene {
-        WindowGroup {
+        // Single-window scene — prevents WindowGroup's default behavior of
+        // spawning a new window for every file dropped on the dock icon.
+        Window("Smoosh", id: "main") {
             ContentView()
         }
         .windowResizability(.contentSize)
+        .commands {
+            CommandGroup(replacing: .newItem) {}
+        }
     }
 }

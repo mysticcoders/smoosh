@@ -103,8 +103,25 @@ hdiutil create -volname "${APP_NAME}" \
     -fs HFS+ \
     "${DMG_RW}"
 
+# Detach any stale mounts from previous runs so the new attach gets /Volumes/${APP_NAME}
+# (otherwise macOS renames the mount to "Smoosh 1", "Smoosh 2", ... and AppleScript can't find it)
+for stale in /Volumes/"${APP_NAME}"*; do
+    [ -d "${stale}" ] && hdiutil detach "${stale}" -force >/dev/null 2>&1 || true
+done
+
 # Mount the read-write DMG
-MOUNT_DIR=$(hdiutil attach "${DMG_RW}" -readwrite -noverify | grep "Volumes" | awk '{print $3}')
+MOUNT_DIR=$(hdiutil attach "${DMG_RW}" -readwrite -noverify -noautoopen \
+    | awk -F '\t' '/\/Volumes\// { print $NF; exit }')
+if [ -z "${MOUNT_DIR}" ] || [ ! -d "${MOUNT_DIR}" ]; then
+    echo "Failed to mount ${DMG_RW}" >&2
+    exit 1
+fi
+if ! touch "${MOUNT_DIR}/.rwcheck" 2>/dev/null; then
+    echo "Mount ${MOUNT_DIR} is read-only — aborting" >&2
+    hdiutil detach "${MOUNT_DIR}" -force >/dev/null 2>&1 || true
+    exit 1
+fi
+rm "${MOUNT_DIR}/.rwcheck"
 echo "Mounted DMG at: ${MOUNT_DIR}"
 
 # Copy background image
